@@ -689,7 +689,7 @@ class Experiment:
     def set_experiment_filename(self, fixed_path=False, addon=None):
         if fixed_path is None:
             date = datetime.datetime.utcnow().strftime('%Y_%m_%d__%H_%M_%S_%f')[:-3]
-            experiment_filename = (addon if addon is not None else "") + "__run__" + date + "__" + str(self.ID)
+            experiment_filename = (addon if addon is not None else "") + f"{self.problem_name}__run__" + date + "__" + str(self.ID)
         else:
             experiment_filename = str(fixed_path)
 
@@ -747,12 +747,15 @@ class Experiment:
                  wd=None,
                  fixed = False,
                  addon=None,
-                 best_overall_dir=False):
+                 best_overall_dir=False,
+                 problem_name=None):
 
+        self.problem_name = problem_name
         self.ID = self.set_experiment_ID()
         self.seed = self.ID if (seed is None) else seed
         self.filename = self.set_experiment_filename(addon=addon, fixed_path=fixed)
         self.prefix = addon
+        
 
         try:
             self.working_directory = (os.getcwd() + sub_wd + addon + _tgp_delimiter + self.filename + _tgp_delimiter) if wd is None else wd
@@ -1313,7 +1316,8 @@ class Engine:
                  reeval_fitness_start=True,
                  start_fitness_file=None,
                  read_init_pop_from_file=None,  # to be deprecated
-                 read_init_pop_from_source=None):
+                 read_init_pop_from_source=None, 
+                 problem_name=None):
 
         # start timers
         self.last_engine_time = time.time()
@@ -1406,9 +1410,10 @@ class Engine:
         self.effective_dims = self.dimensionality if effective_dims is None else effective_dims
         self.initial_test_device = initial_test_device
         self.device = set_device(device=device) if self.initial_test_device else device  # Check for available devices
+        self.problem_name = problem_name
 
         self.fixed_path = fixed_path
-        self.experiment = Experiment(seed=seed, wd=self.run_dir_path, addon=str(exp_prefix), fixed=self.fixed_path, best_overall_dir=best_overall_dir)
+        self.experiment = Experiment(seed=seed, wd=self.run_dir_path, addon=str(exp_prefix), fixed=self.fixed_path, best_overall_dir=best_overall_dir, problem_name=self.problem_name)
         self.flag_file =  self.experiment.all_directory + "_flag_to_evolve"
         self.interface = interface
 
@@ -2615,7 +2620,10 @@ class Engine:
                 self.best_overall = self.deep_shallow_copy(self.best)
 
             # save pop and bests
+            
+            
             self.save_pop_and_bests(population=self.population)
+            
 
             # update engine time
             self.update_engine_time()
@@ -2641,12 +2649,17 @@ class Engine:
                               pops['depth'][0], pops['depth'][1], pops['depth'][2], pops['depth'][3],
                               pops['nodes'][0], pops['nodes'][1], pops['nodes'][2], pops['nodes'][3],
                               self.recent_engine_time, self.recent_fitness_time, self.recent_tensor_time])
+            """
             print(
                 bcolors.OKBLUE + "[%7d, %10.6f, %10.6f, %10.6f, %10.6f, %10.3f, %10.6f, %10d, %10d, %10.3f, %10.6f, %10d, %10d, %10.6f, %10.6f, %10.6f]" % tuple(
-                    self.data[-1]), bcolors.ENDC)
+                    self.data[-1]), bcolors.ENDC)"
+            """
 
+            
+            
             self.write_pop_to_csv(self.pop_file_path)
             self.save_bests_log()
+            
 
             # print engine state
             self.summary(force_print=False)
@@ -2662,6 +2675,9 @@ class Engine:
 
         # write statistics(data) to csv
         self.write_overall_to_csv(self.data)
+        #self.save_pop_and_bests(population=self.population)
+        #self.write_pop_to_csv(self.pop_file_path)
+        #self.save_bests_log()
 
         # Write final enggine state to file
         # self.save_engine_state()
