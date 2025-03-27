@@ -53,7 +53,7 @@ if __name__ == "__main__":
 
     # GP params
     dev = '/gpu:0'  # device to run, write '/cpu_0' to tun on cpu
-    gens = 20  # 50
+    gens = 2000  # 50
     pop_size = 100  # 50
     tour_size = 5
     mut_rate = 0.9
@@ -61,7 +61,7 @@ if __name__ == "__main__":
     max_tree_dep = 12
     max_init_depth=6
     elite_size = 1  # 0 to turn off
-    runs = 1  # Number of average runs
+    runs = 30  # Number of average runs
 
     # problems
     pagie = "add(div(scalar(1.0), add(scalar(1.0), div(scalar(1.0), mult(mult(x, x), mult(x, x))))), div(scalar(1.0), add(scalar(1.0), div(scalar(1.0), mult(mult(y, y), mult(y, y))))))"
@@ -130,7 +130,7 @@ if __name__ == "__main__":
                                min_subtree_dep=None,
                         	      max_subtree_dep=None,
                         
-                                operators = normal_set,
+                                operators = my_set,
                                 seed = seeds,
                                 save_to_file = 2000,
                                 save_to_file_image = 2000,

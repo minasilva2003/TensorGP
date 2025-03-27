@@ -1,0 +1,11 @@
+problem,min_fitness,num_correct,problem,min_fitness_std,num_correct_std
+collatz_numbers,45.681475282656976,0.0,collatz_numbers,,
+median,40.27988798395547,0.0,median,,
+number_io,3.125672336752233e-06,83.0,number_io,,
+smallest,21.85438280986219,0.0,smallest,,
+sum_of_squares,87531.56791762843,0.0,sum_of_squares,,
+wallis_pi,0.0593987732526187,90.0,wallis_pi,,
+bouncing_balls,209.4938894765191,0.0,bouncing_balls,,
+dice_game,0.0347048362505816,87.0,dice_game,,
+gcd,1603.8630255330409,0.0,gcd,,
+snow_day,17.211930745851845,0.0,snow_day,,
