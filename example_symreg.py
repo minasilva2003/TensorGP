@@ -36,6 +36,10 @@ def calc_fit(**kwargs):
 
     return population, best_ind
 
+# Custom var_func to map terminal variables to columns of the input matrix
+def custom_var_func(dimensions, column_index):
+        return tf.cast(X[:, column_index], tf.float32)
+
 
 # Different types of function sets
 extended_fset = {'max', 'min', 'abs', 'add', 'and', 'or', 'mult', 'sub', 'xor', 'neg', 'cos', 'sin', 'tan', 'sqrt',
@@ -43,19 +47,21 @@ extended_fset = {'max', 'min', 'abs', 'add', 'and', 'or', 'mult', 'sub', 'xor', 
 simple_set = {'add', 'sub', 'mult', 'div', 'sin', 'tan', 'cos'}
 normal_set = {'add', 'mult', 'sub', 'div', 'cos', 'sin', 'tan', 'abs', 'sign', 'pow'}
 
+my_set = {"add", "sub", "mult", "div", "abs", "pow", "max", "min"}
+
 if __name__ == "__main__":
 
     # GP params
     dev = '/gpu:0'  # device to run, write '/cpu_0' to tun on cpu
-    gens = 2000  # 50
+    gens = 20  # 50
     pop_size = 100  # 50
-    tour_size = 2
-    mut_rate = 0.1
-    cross_rate = 0.9
-    max_tree_dep = 10
-    max_init_depth = 10
+    tour_size = 5
+    mut_rate = 0.9
+    cross_rate = 0.5
+    max_tree_dep = 12
+    max_init_depth=6
     elite_size = 1  # 0 to turn off
-    runs = 30  # Number of average runs
+    runs = 1  # Number of average runs
 
     # problems
     pagie = "add(div(scalar(1.0), add(scalar(1.0), div(scalar(1.0), mult(mult(x, x), mult(x, x))))), div(scalar(1.0), add(scalar(1.0), div(scalar(1.0), mult(mult(y, y), mult(y, y))))))"
@@ -65,45 +71,65 @@ if __name__ == "__main__":
 
     for p in problems:
 
-         # Load CSV using Pandas
+        # Load CSV using Pandas
         df = pd.read_csv(f"cases/{p}_cases.csv")
 
         # Convert to TensorFlow dataset
-   
         dataset = tf.convert_to_tensor(df.to_numpy())
+        X = dataset[:, :-1]
+        Y = dataset[:, -1]
 
-    
+        # Ensure X always has at least two dimensions
+        if X.shape[1] == 1:  # If X is 1D
+            # Add a column of zeros to X
+            zeros_column = tf.zeros([X.shape[0], 1], dtype=X.dtype)  # Create a column of zeros with the same number of rows as X
+            X = tf.concat([X, zeros_column], axis=1)  # Concatenate the zeros column to X along the second axis (columns)
+
+
         # Domains dimensions
-        test_cases = [[dataset.shape[0], dataset.shape[1]]]  # Add more dimensions to test
+        test_cases = [[Y.shape[0],1]]  # Add more dimensions to test
 
         for res in test_cases:
 
             for r in range(runs):
-                # seeds = random.randint(0, 0x7fffffff)
-                seeds = 39485793482  # reproducibility
+                seeds = random.randint(0, 0x7fffffff)
+                #seeds = 39485793482  # reproducibility
 
                 # create engine
                 engine = Engine(fitness_func=calc_fit,
+                                function_set=Function_Set(my_set,8),
                                 population_size=pop_size,
                                 tournament_size=tour_size,
                                 mutation_rate=mut_rate,
                                 crossover_rate=cross_rate,
                                 max_tree_depth=max_tree_dep,
+                                min_tree_depth=-1,
+                                min_init_depth=1,
+                                max_init_depth=6,
+                                var_func=custom_var_func,
+                                effective_dims=X.shape[1],
                                 target_dims=res,
-                                target=dataset,
+                                target=Y,
                                 elitism=elite_size,
                                 method='ramped half-and-half',
-                                max_init_depth=max_init_depth,
+
                                 objective='minimizing',
-                                domain_mode='log',
+                                domain_mode='clip',
                                 device=dev,
                                 stop_criteria='generation',
                                 stop_value=gens,
-                                effective_dims=2,
                                 domain=[-100000, 100000],
                                 codomain = [-100000, 100000],  # pagie codomain for the specified [-5, 5 ] range
-                                do_final_transform = True,
+                                do_final_transform = False,
                                 final_transform = [0, 2],
+                                
+                               # mutations
+                               max_retries=20,
+                               mutation_funcs=[Engine.point_mutation, Engine.subtree_mutation, Engine.insert_mutation, Engine.delete_mutation],
+                               mutation_probs=[0.25, 0.3, 0.2, 0.25],
+                               min_subtree_dep=None,
+                        	      max_subtree_dep=None,
+                        
                                 operators = normal_set,
                                 seed = seeds,
                                 save_to_file = 2000,
@@ -116,10 +142,15 @@ if __name__ == "__main__":
                                 save_log = True,
                                 write_engine_state = True,
                                 read_init_pop_from_file = None,
-                                bloat_control="weak",
+                        # bloat
+                        bloat_control='weak',
+                        bloat_mode='depth',
+                        dynamic_limit=5,
+                        min_overall_size=1,
+                        max_overall_size=max_tree_dep,
                                 problem_name=p
                                 )
                 
-
                 # run evolutionary process
                 engine.run()
+        

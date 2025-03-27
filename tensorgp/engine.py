@@ -2063,6 +2063,7 @@ class Engine:
             # _start = time.time()
 
             test_tens = p['tree'].get_tensor(self)
+            #tens=test_tens
             # tens = self.final_transform_domain(test_tens)
             tens = self.domain_mapping(test_tens)
             # tens = test_tens
