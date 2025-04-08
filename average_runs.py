@@ -5,11 +5,11 @@ problems = ["collatz_numbers", "median", "number_io", "smallest", "sum_of_square
 
 def analyze_fitness(base_directory, problem_name):
     folders = [f for f in os.listdir(base_directory) if f.startswith(problem_name)]
-
-    print(len(folders))
+    folders = folders[:30]  # Limit to first 30 folders
+    print(f"{problem_name} has {len(folders)} folders")
     
     for folder in folders:
-        gen_file_path = os.path.join(base_directory, folder, "logs", "generations", "gen00020.csv")
+        gen_file_path = os.path.join(base_directory, folder, "logs", "generations", "gen02000.csv")
         stats_file_path = os.path.join(base_directory, folder, "my_stats.csv")
         
         try:
@@ -23,9 +23,9 @@ def analyze_fitness(base_directory, problem_name):
             
             # Create a new DataFrame with the results
             stats_df = pd.DataFrame([[min_fitness, count_below_threshold]], columns=["min_fitness", "num_correct"])
+            stats_df["min_fitness"] = stats_df["min_fitness"].round(2)  # Round min_fitness to two decimals
             stats_df.to_csv(stats_file_path, index=False)  # Save to CSV
             
-            print(f"Stats saved to {stats_file_path}")
         except FileNotFoundError:
             print(f"Warning: {gen_file_path} not found")
         except Exception as e:
@@ -38,9 +38,11 @@ def average_problem_stats(parent_directory, problems):
     
     for problem in problems:
         
-        folders = [f for f in os.listdir(parent_directory) if f.startswith(problem)]
+        folders = [f for f in os.listdir(parent_directory+"/"+problem) if f.startswith(problem)]
 
-        stat_files = [os.path.join(parent_directory, folder, "my_stats.csv") for folder in folders]
+        folders = folders[:30]
+
+        stat_files = [os.path.join(parent_directory+"/"+problem, folder, "my_stats.csv") for folder in folders]
         
         print(f"Processing {problem}... with {len(stat_files)} files")
 
@@ -56,7 +58,11 @@ def average_problem_stats(parent_directory, problems):
         if all_stats:
             concatenated_stats = pd.concat(all_stats)
             avg_stats = concatenated_stats.mean().to_frame().T  # Compute average row
-            std_stats = concatenated_stats.std().to_frame().T  # Compute standard deviation row
+            std_stats = concatenated_stats.std().to_frame().T.round(2)  # Compute standard deviation row and round to two decimals
+            
+            # Round specific columns
+            avg_stats["min_fitness"] = avg_stats["min_fitness"].round(2)  # Round min_fitness to two decimals
+            avg_stats["num_correct"] = avg_stats["num_correct"].round(0)  # Round num_correct to the nearest unit
             
             # Add problem name
             avg_stats.insert(0, "problem", problem)
@@ -70,15 +76,16 @@ def average_problem_stats(parent_directory, problems):
             results.append(combined_stats)
     
     if results:
-        final_df = pd.concat(results, ignore_index=True)
+        final_df = pd.concat(results, ignore_index=True)  # Combine all results
         final_df.to_csv("summary_stats.csv", index=False)
 
 
 
 # Example usage
-"""
-for p in problems:
-    analyze_fitness("runs", p)
-"""
 
-average_problem_stats("runs", problems)
+for p in problems:
+    base_directory = "tensorgp_runs"+"/"+p
+    analyze_fitness(base_directory, p)
+
+
+average_problem_stats("tensorgp_runs", problems)
