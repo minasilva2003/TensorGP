@@ -1,4 +1,7 @@
 from tensorgp.engine import *
+import tensorflow as tf
+import torch 
+import pandas as pd
 
 # Fitness function to calculate RMSE from target (Pagie Polynomial)
 def calc_fit(**kwargs):
@@ -23,89 +26,131 @@ def calc_fit(**kwargs):
     for i in range(len(tensors)):
 
         start_ind = time.time()
-        fit = tensor_rmse(tensors[i], target).cpu().numpy()
-
+        fit = old_tf_rmse(tensors[i], target)
         if condition():
             max_fit = fit
             best_ind = i
 
         times.append((time.time() - start_ind) * 1000.0)
-        fitness.append(fit)
         population[i]['fitness'] = fit
-
-    #if generation == gens:
-    #    save_image(tensors[best_ind], best_ind, fn, 2)
 
     return population, best_ind
 
+# Custom var_func to map terminal variables to columns of the input matrix
+def custom_var_func(dimensions, column_index):
+        return tf.cast(X[:, column_index], tf.float32)
+
 
 # Different types of function sets
-extended_fset = {'max', 'min', 'abs', 'add', 'and', 'or', 'mult', 'sub', 'xor', 'neg', 'cos', 'sin', 'tan', 'sqrt', 'div', 'exp', 'log', 'warp'}
+extended_fset = {'max', 'min', 'abs', 'add', 'and', 'or', 'mult', 'sub', 'xor', 'neg', 'cos', 'sin', 'tan', 'sqrt',
+                 'div', 'exp', 'log', 'warp'}
 simple_set = {'add', 'sub', 'mult', 'div', 'sin', 'tan', 'cos'}
 normal_set = {'add', 'mult', 'sub', 'div', 'cos', 'sin', 'tan', 'abs', 'sign', 'pow'}
 
+my_set = {"add", "sub", "mult", "div", "abs", "pow", "max", "min"}
 
 if __name__ == "__main__":
 
     # GP params
-    dev = 'cuda'
-    gens = 10  # 50
-    pop_size = 50  # 50
-    tour_size = 3
-    mut_rate = 0.1
-    cross_rate = 0.9
+    dev = '/gpu:0'  # device to run, write '/cpu_0' to tun on cpu
+    gens = 20  # 50
+    pop_size = 100  # 50
+    tour_size = 5
+    mut_rate = 0.9
+    cross_rate = 0.5
     max_tree_dep = 12
-    max_init_depth = 10
-    min_init_depth = 5
-    elite_size = 1 # 0 to turn off
+    max_init_depth=6
+    elite_size = 1  # 0 to turn off
     runs = 1 # Number of average runs
 
     # problems
     pagie = "add(div(scalar(1.0), add(scalar(1.0), div(scalar(1.0), mult(mult(x, x), mult(x, x))))), div(scalar(1.0), add(scalar(1.0), div(scalar(1.0), mult(mult(y, y), mult(y, y))))))"
-    keijzer11 = "add(mult(x, y), sin(mult(sub(x, scalar(1.0), sub(y, scalar(1.0)))))"
-    korns3 = "add(scalar(-5.41), mult(scalar(4.9), div(sub(v, add(x, div(y, w))), mult(scalar(3.0, w)))))"
+    keijzer11 = "add(mult(x, var), sin(mult(sub(x, scalar(1.0)), sub(var, scalar(1.0)))))"
 
-    problems = [pagie]  # Add to run more problems
-
-    # Domains dimensions
-    test_cases = [[1024, 1024]]
-
+    problems = ["collatz_numbers", "median", "number_io", "smallest", "sum_of_squares", "wallis_pi", "bouncing_balls", "dice_game", "gcd", "snow_day"]  # Add to run more problems
+    problems = ["collatz_numbers"]  # Add to run more problems
+    problems = ["median"]  # Add to run more problems
     for p in problems:
+
+        # Load CSV using Pandas
+        df = pd.read_csv(f"cases/{p}_cases.csv")
+
+        # Convert to TensorFlow dataset
+        dataset = tf.convert_to_tensor(df.to_numpy())
+        X = dataset[:, :-1]
+        Y = dataset[:, -1]
+
+        # Ensure X always has at least two dimensions
+        if X.shape[1] == 1:  # If X is 1D
+            # Add a column of zeros to X
+            zeros_column = tf.zeros([X.shape[0], 1], dtype=X.dtype)  # Create a column of zeros with the same number of rows as X
+            X = tf.concat([X, zeros_column], axis=1)  # Concatenate the zeros column to X along the second axis (columns)
+
+
+        # Domains dimensions
+        test_cases = [[Y.shape[0],1]]  # Add more dimensions to test
 
         for res in test_cases:
 
             for r in range(runs):
-
-                #seeds = random.randint(0, 0x7fffffff)
-                seeds = 39485793482 # reproducibility
+                seeds = random.randint(0, 0x7fffffff)
+                #seeds = 39485793482  # reproducibility
 
                 # create engine
                 engine = Engine(fitness_func=calc_fit,
+                                function_set=Function_Set(my_set,8),
                                 population_size=pop_size,
                                 tournament_size=tour_size,
                                 mutation_rate=mut_rate,
                                 crossover_rate=cross_rate,
                                 max_tree_depth=max_tree_dep,
+                                min_tree_depth=-1,
+                                min_init_depth=1,
+                                max_init_depth=6,
+                                var_func=custom_var_func,
+                                effective_dims=X.shape[1],
                                 target_dims=res,
-                                target=pagie,
+                                target=Y,
                                 elitism=elite_size,
                                 method='ramped half-and-half',
-                                max_init_depth=max_init_depth,
-                                exp_prefix="experience_name",
+
                                 objective='minimizing',
+                                domain_mode='clip',
                                 device=dev,
                                 stop_criteria='generation',
                                 stop_value=gens,
-                                effective_dims=2,
-                                do_final_transform=True,
-                                domain=[-5, 5],
-                                codomain=[-5, 5],
-                                operators=normal_set,
-                                seed=seeds,
-                                save_to_file=10,
-                                save_graphics=False,
-                                show_graphics=False,
-                                read_init_pop_from_file=None)
-
+                                domain=[-100000, 100000],
+                                codomain = [-100000, 100000],  # pagie codomain for the specified [-5, 5 ] range
+                                do_final_transform = False,
+                                final_transform = [0, 2],
+                                
+                               # mutations
+                               max_retries=20,
+                               mutation_funcs=[Engine.point_mutation, Engine.subtree_mutation, Engine.insert_mutation, Engine.delete_mutation],
+                               mutation_probs=[0.25, 0.3, 0.2, 0.25],
+                               min_subtree_dep=None,
+                        	      max_subtree_dep=None,
+                        
+                                operators = my_set,
+                                seed = seeds,
+                                save_to_file = 2000,
+                                save_to_file_image = 2000,
+                                save_to_file_log = 2000,
+                                save_graphics = False,
+                                show_graphics = False,
+                                save_image_best = False,
+                                save_image_pop = False,
+                                save_log = True,
+                                write_engine_state = True,
+                                read_init_pop_from_file = None,
+                        # bloat
+                        bloat_control='weak',
+                        bloat_mode='depth',
+                        dynamic_limit=5,
+                        min_overall_size=1,
+                        max_overall_size=max_tree_dep,
+                                problem_name=p
+                                )
+                
                 # run evolutionary process
                 engine.run()
