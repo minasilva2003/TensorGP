@@ -26,7 +26,7 @@ def calc_fit(**kwargs):
     for i in range(len(tensors)):
 
         start_ind = time.time()
-        fit = old_tf_rmse(tensors[i], target)
+        fit = tensor_rmse(tensors[i], target)
         if condition():
             max_fit = fit
             best_ind = i
@@ -38,8 +38,7 @@ def calc_fit(**kwargs):
 
 # Custom var_func to map terminal variables to columns of the input matrix
 def custom_var_func(dimensions, column_index):
-        return tf.cast(X[:, column_index], tf.float32)
-
+    return torch.tensor(X[:, column_index].numpy(), dtype=torch.float32)
 
 # Different types of function sets
 extended_fset = {'max', 'min', 'abs', 'add', 'and', 'or', 'mult', 'sub', 'xor', 'neg', 'cos', 'sin', 'tan', 'sqrt',
@@ -68,24 +67,23 @@ if __name__ == "__main__":
     keijzer11 = "add(mult(x, var), sin(mult(sub(x, scalar(1.0)), sub(var, scalar(1.0)))))"
 
     problems = ["collatz_numbers", "median", "number_io", "smallest", "sum_of_squares", "wallis_pi", "bouncing_balls", "dice_game", "gcd", "snow_day"]  # Add to run more problems
-    problems = ["collatz_numbers"]  # Add to run more problems
-    problems = ["median"]  # Add to run more problems
+   
     for p in problems:
 
         # Load CSV using Pandas
         df = pd.read_csv(f"cases/{p}_cases.csv")
 
         # Convert to TensorFlow dataset
-        dataset = tf.convert_to_tensor(df.to_numpy())
-        X = dataset[:, :-1]
-        Y = dataset[:, -1]
+        # Convert to PyTorch tensors
+        X = torch.tensor(df.iloc[:, :-1].to_numpy(), dtype=torch.float32)
+        Y = torch.tensor(df.iloc[:, -1].to_numpy(), dtype=torch.float32)
 
         # Ensure X always has at least two dimensions
-        if X.shape[1] == 1:  # If X is 1D
-            # Add a column of zeros to X
-            zeros_column = tf.zeros([X.shape[0], 1], dtype=X.dtype)  # Create a column of zeros with the same number of rows as X
-            X = tf.concat([X, zeros_column], axis=1)  # Concatenate the zeros column to X along the second axis (columns)
-
+        # Ensure X always has at least two dimensions
+        if X.shape[1] == 1:  # If X has only one column
+            # Add a column of zeros to X using PyTorch
+            zeros_column = torch.zeros([X.shape[0], 1], dtype=X.dtype)  # Create a column of zeros
+            X = torch.cat([X, zeros_column], dim=1)  # Concatenate the zeros column to X along the second axis (columns)
 
         # Domains dimensions
         test_cases = [[Y.shape[0],1]]  # Add more dimensions to test
@@ -95,7 +93,7 @@ if __name__ == "__main__":
             for r in range(runs):
                 seeds = random.randint(0, 0x7fffffff)
                 #seeds = 39485793482  # reproducibility
-
+                print(dir(Experiment))
                 # create engine
                 engine = Engine(fitness_func=calc_fit,
                                 function_set=Function_Set(my_set,8),
@@ -149,7 +147,6 @@ if __name__ == "__main__":
                         dynamic_limit=5,
                         min_overall_size=1,
                         max_overall_size=max_tree_dep,
-                                problem_name=p
                                 )
                 
                 # run evolutionary process

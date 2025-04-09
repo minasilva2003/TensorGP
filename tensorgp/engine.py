@@ -619,7 +619,7 @@ class Experiment:
     def set_experiment_filename(self, fixed_path=False, addon=None):
         if fixed_path is None:
             date = datetime.datetime.utcnow().strftime('%Y_%m_%d__%H_%M_%S_%f')[:-3]
-            experiment_filename = (addon if addon is not None else "") + "__run__" + date + "__" + str(self.ID)
+            experiment_filename = (addon if addon is not None else "") + f"__run__" + date + "__" + str(self.ID)
         else:
             experiment_filename = str(fixed_path)
 
@@ -677,13 +677,13 @@ class Experiment:
                  wd=None,
                  fixed = False,
                  addon=None,
-                 best_overall_dir=False):
+                 best_overall_dir=False,
+                 ):
 
         self.ID = self.set_experiment_ID()
         self.seed = self.ID if (seed is None) else seed
         self.filename = self.set_experiment_filename(addon=addon, fixed_path=fixed)
         self.prefix = addon
-
         try:
             self.working_directory = (os.getcwd() + sub_wd + addon + _tgp_delimiter + self.filename + _tgp_delimiter) if wd is None else wd
             os.makedirs(self.working_directory, exist_ok=True)
@@ -1247,6 +1247,7 @@ class Engine:
                  read_init_pop_from_file=None,  # to be deprecated
                  read_init_pop_from_source=None):
 
+       
         # start timers
         self.last_engine_time = time.time()
         start_init = self.last_engine_time
@@ -1384,7 +1385,7 @@ class Engine:
                                          best_overall_dir=best_overall_dir)
             self.flag_file = self.experiment.all_directory + "_flag_to_evolve"
             self.interface = interface
-
+            
 
         self.active_interface = False # it's here because of the feednplay
 
@@ -2405,6 +2406,7 @@ class Engine:
                               pops['nodes'][0], pops['nodes'][1], pops['nodes'][2], pops['nodes'][3],
                               self.recent_engine_time, self.recent_fitness_time, self.recent_tensor_time])
             if self.save_state == 0:
+                """
                 print(
                     bcolors.BOLD + bcolors.OKCYAN + "\n[       |                    FITNESS                    |                     DEPTH                     |                     NODES                     |              TIMINGS              ]",
                     bcolors.ENDC)
@@ -2414,7 +2416,7 @@ class Engine:
             print(
                 bcolors.OKBLUE + "[%7d, %10.6f, %10.6f, %10.6f, %10.6f, %10.3f, %10.6f, %10d, %10d, %10.3f, %10.6f, %10d, %10d, %10.6f, %10.6f, %10.6f]" % tuple(
                     self.data[-1]), bcolors.ENDC)
-
+                """
             self.current_generation += 1
 
 
