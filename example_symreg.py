@@ -64,12 +64,8 @@ if __name__ == "__main__":
     runs = 30  # Number of average runs
 
     # problems
-    pagie = "add(div(scalar(1.0), add(scalar(1.0), div(scalar(1.0), mult(mult(x, x), mult(x, x))))), div(scalar(1.0), add(scalar(1.0), div(scalar(1.0), mult(mult(y, y), mult(y, y))))))"
-    keijzer11 = "add(mult(x, var), sin(mult(sub(x, scalar(1.0)), sub(var, scalar(1.0)))))"
-
     problems = ["collatz_numbers", "median", "number_io", "smallest", "sum_of_squares", "wallis_pi", "bouncing_balls", "dice_game", "gcd", "snow_day"]  # Add to run more problems
-    problems = ["collatz_numbers"]  # Add to run more problems
-    problems = ["median"]  # Add to run more problems
+
     for p in problems:
 
         # Load CSV using Pandas
