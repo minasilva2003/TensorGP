@@ -84,8 +84,8 @@ def average_problem_stats(parent_directory, problems):
 # Example usage
 
 for p in problems:
-    base_directory = "tensorgp_runs"+"/"+p
+    base_directory = "runs"+"/"+p
     analyze_fitness(base_directory, p)
 
 
-average_problem_stats("tensorgp_runs", problems)
+average_problem_stats("runs", problems)
